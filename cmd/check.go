@@ -55,12 +55,8 @@ to quickly create a Cobra application.`,
 		// scrub invalid urls
 		targetURLs := parseURLs(args)
 
-		// provide a timeout for http client requests
-		d, _ := time.ParseDuration(viper.GetString("timeout"))
-		timeout := time.Second * d
-
 		// perform url accessiblity checks
-		processURLs(proxy, targetURLs, timeout)
+		processURLs(proxy, targetURLs)
 	},
 }
 
@@ -96,7 +92,7 @@ func checkProxy(proxyURL string) (*url.URL, error) {
 	return u, nil
 }
 
-func processURLs(proxy *url.URL, targetURLs []url.URL, timeout time.Duration) {
+func processURLs(proxy *url.URL, targetURLs []url.URL) {
 	log.Infof("URLs to check: %d", len(targetURLs))
 
 	// create http client
@@ -105,9 +101,7 @@ func processURLs(proxy *url.URL, targetURLs []url.URL, timeout time.Duration) {
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxy),
-		},
+		Proxy: http.ProxyURL(proxy),
 	}
 
 	// create channel to hold results
