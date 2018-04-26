@@ -102,6 +102,9 @@ func processURLs(proxy *url.URL, targetURLs []url.URL, timeout time.Duration) {
 	// create http client
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			Proxy: http.ProxyURL(proxy),
 		},
@@ -166,8 +169,9 @@ func checkURL(client *http.Client, u url.URL, t time.Duration, ch chan *http.Res
 
 	// follow redirects recursively
 	if location := res.Header.Get("Location"); location != "" {
-		log.Debugln("Following redirect!")
-		// todo
+		log.Debugln("Following redirect")
+		wg.Add(1)
+		go checkURL(client, u, t, ch)
 	}
 }
 
