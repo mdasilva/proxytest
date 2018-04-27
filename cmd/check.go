@@ -36,13 +36,10 @@ var wg sync.WaitGroup
 // checkCmd represents the check command
 var checkCmd = &cobra.Command{
 	Use:   "check URL",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Perform a GET request for a given URL through a proxy",
+	Long: `Perform a GET request to determine connectivity through a web proxy.
+URLs must be properly formatted with preceeding protocol.
+Provide multiple URLs as additional arguments.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// set desired logging level
 		level, err := log.ParseLevel(viper.GetString("log-level"))
