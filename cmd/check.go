@@ -16,6 +16,8 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -60,6 +62,14 @@ to quickly create a Cobra application.`,
 	},
 }
 
+// display format struct
+type Results struct {
+	Request  string `json:"request"`
+	Status   string `json:"status"`
+	Redirect string `json:"redirect,omitempty"`
+}
+
+// stinky
 func parseURLs(args []string) []url.URL {
 	c := make([]url.URL, 0)
 	for i := 0; i < len(args); i++ {
@@ -88,7 +98,7 @@ func checkProxy(proxyURL string) (*url.URL, error) {
 		return &url.URL{}, err
 	}
 	defer conn.Close()
-	log.Infoln("Proxy connection successful")
+	log.Infof("%s proxy connection successful", proxyURL)
 	return u, nil
 }
 
@@ -97,11 +107,12 @@ func processURLs(proxy *url.URL, targetURLs []url.URL) {
 
 	// create http client
 	client := &http.Client{
-		Timeout: timeout,
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxy),
+		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Proxy: http.ProxyURL(proxy),
 	}
 
 	// create channel to hold results
@@ -124,15 +135,26 @@ func processURLs(proxy *url.URL, targetURLs []url.URL) {
 		wg.Wait()
 	}()
 
-resultsloop:
+resultloop:
 	for {
 		select {
 		case res := <-results:
-			log.Infoln("url: ", res.Request.URL.String())
-			log.Infoln("status: ", res.Status)
-			log.Infoln("location: ", res.Header.Get("Location"))
+			log.Infof("Request: %s, Status: %s, Redirect: %s",
+				res.Request.URL.String(),
+				res.Status,
+				res.Header.Get("Location"))
+			j, err := json.Marshal(Results{
+				Request:  res.Request.URL.String(),
+				Status:   res.Status,
+				Redirect: res.Header.Get("Location"),
+			})
+			if err != nil {
+				log.Fatalln(err)
+			}
+			// output json to stdout
+			fmt.Println(string(j))
 		case <-done:
-			break resultsloop
+			break resultloop
 		}
 	}
 }
@@ -163,13 +185,19 @@ func checkURL(client *http.Client, u url.URL, t time.Duration, ch chan *http.Res
 
 	// follow redirects recursively
 	if location := res.Header.Get("Location"); location != "" {
-		log.Debugln("Following redirect")
+		log.Debugf("Following redirect %s", location)
 		wg.Add(1)
-		go checkURL(client, u, t, ch)
+		// stinky
+		r, err := url.Parse(location)
+		if err != nil {
+			log.Warnln(err)
+		}
+		go checkURL(client, *r, t, ch)
 	}
 }
 
 func init() {
 	log.SetOutput(os.Stderr)
+	//log.SetLevel(log.DebugLevel)
 	rootCmd.AddCommand(checkCmd)
 }
