@@ -44,6 +44,12 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// set desired logging level
+		level, err := log.ParseLevel(viper.GetString("log-level"))
+		if err != nil {
+			log.Panicln(err)
+		}
+		log.SetLevel(level)
 		if len(args) == 0 {
 			log.Fatalln("Need a least one URL to check")
 		}
@@ -198,6 +204,5 @@ func checkURL(client *http.Client, u url.URL, t time.Duration, ch chan *http.Res
 
 func init() {
 	log.SetOutput(os.Stderr)
-	//log.SetLevel(log.DebugLevel)
 	rootCmd.AddCommand(checkCmd)
 }

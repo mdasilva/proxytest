@@ -24,8 +24,7 @@ import (
 )
 
 var cfgFile string
-var proxyHost string
-var proxyPort string
+var logLevel string
 var proxyURL string
 var timeout int
 
@@ -56,13 +55,11 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.app.yaml)")
-	rootCmd.PersistentFlags().StringVar(&proxyHost, "proxy-host", os.Getenv("PROXY_HOST"), "host of the web proxy")
-	rootCmd.PersistentFlags().StringVar(&proxyPort, "proxy-port", os.Getenv("PROXY_PORT"), "port the web proxy is listening on")
 	rootCmd.PersistentFlags().StringVar(&proxyURL, "proxy-url", os.Getenv("HTTP_PROXY"), "web proxy URL")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "error", "logging level")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "timeout for URL checks")
-	viper.BindPFlag("proxy-host", rootCmd.PersistentFlags().Lookup("proxy-host"))
-	viper.BindPFlag("proxy-port", rootCmd.PersistentFlags().Lookup("proxy-port"))
 	viper.BindPFlag("proxy-url", rootCmd.PersistentFlags().Lookup("proxy-url"))
+	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
 	viper.BindPFlag("timeout", rootCmd.PersistentFlags().Lookup("timeout"))
 
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
