@@ -96,7 +96,7 @@ func checkProxy(proxyURL string) (*url.URL, error) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	conn, err := net.Dial("tcp", u.Hostname()+":"+u.Port())
+	conn, err := net.DialTimeout("tcp", u.Hostname()+":"+u.Port(), 3*time.Second)
 	if err != nil {
 		return &url.URL{}, err
 	}
@@ -128,7 +128,7 @@ func processURLs(proxy *url.URL, targetURLs []url.URL) {
 	// begin http checks
 	for _, u := range targetURLs {
 		log.Debugln("Firing URL check")
-		go checkURL(client, u, 5*time.Second, results)
+		go checkURL(client, u, 3*time.Second, results)
 	}
 
 	// signal completion
