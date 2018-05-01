@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -105,6 +107,22 @@ func (c *HttpCheckEntry) Check() {
 	}
 }
 
+// getStdinURLs reads stdin and returns a slice of strings
+func getStdinURLs() ([]string, error) {
+
+	urls := make([]string, 0)
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		urls = append(urls, strings.TrimSuffix(line, "\n"))
+	}
+	log.Infof("Found %d URLS from Stdin", len(urls))
+	return urls, nil
+}
+
 // cmdMain is the primary procedure for the check command execution
 func cmdMain(cmd *cobra.Command, args []string) {
 	// Set desired logging level
@@ -113,19 +131,25 @@ func cmdMain(cmd *cobra.Command, args []string) {
 		log.Panicln(err)
 	}
 	log.SetLevel(level)
-	if len(args) == 0 {
-		log.Fatalln("Need a least one URL to check")
+
+	// Gather URLs to check from argument list or stdin
+	var rawURLs []string = args
+	if len(rawURLs) == 0 {
+		rawURLs, _ = getStdinURLs()
+		if err != nil {
+			log.Fatalln("Need a least one URL to check")
+		}
 	}
+
+	// Scrub invalid URLs
+	validURLs := parseURLs(rawURLs)
+	log.Infof("URLs to check: %d", len(validURLs))
 
 	// Test TCP connectivity to web proxy
 	proxy, err := checkProxy(viper.GetString("proxy-url"))
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	// Scrub invalid URLs
-	validURLs := parseURLs(args)
-	log.Infof("URLs to check: %d", len(validURLs))
 
 	// Create a shared HTTP client
 	client := &http.Client{
@@ -196,6 +220,7 @@ func parseURLs(args []string) []url.URL {
 	for _, a := range args {
 		if _, err := url.ParseRequestURI(a); err != nil {
 			log.Warnf("Invalid URI: %s", a)
+			log.Warnln(err)
 		} else {
 			if u, err := url.Parse(a); err != nil {
 				log.Warnf("Could not parse URI: %s", a)
