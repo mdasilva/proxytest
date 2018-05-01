@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -117,7 +116,7 @@ func getStdinURLs() ([]string, error) {
 		if err != nil {
 			break
 		}
-		urls = append(urls, strings.TrimSuffix(line, "\n"))
+		urls = append(urls, cleanSuffix(line))
 	}
 	log.Infof("Found %d URLS from Stdin", len(urls))
 	return urls, nil
