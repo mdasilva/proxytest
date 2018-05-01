@@ -74,3 +74,26 @@ Get version
     $ proxytest version
     version 0.1.0
 
+
+# Building
+
+Checkout code into your GOPATH
+
+    $ git clone git@github.com:mdasilva/proxytest.git $GOPATH/src/github.com/mdasilva/proxytest
+
+Fetch dependencies
+
+    $ cd $GOPATH/src/github.com/mdasilva/proxytest
+    $ go get
+
+
+Set OS and architecture for cross compilation (optional)
+
+    $ export GOOS=windows
+    $ export GOARCH=amd64
+
+
+Build binary
+
+    $ cd $GOPATH/src/github.com/mdasilva/proxytest
+    $ go build 
