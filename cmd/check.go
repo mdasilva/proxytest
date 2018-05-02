@@ -44,11 +44,25 @@ Provide multiple URLs as additional arguments.`,
 	Run: cmdMain,
 }
 
-// HttpCheckResults is the format for result output
-type HttpCheckResults struct {
-	Request  string `json:"request"`
-	Status   string `json:"status"`
-	Redirect string `json:"redirect,omitempty"`
+// HttpCheckResultsDisplay is the format for result output
+type HttpCheckResultsDisplay struct {
+	HttpRequest    string `json:"http_request"`
+	Status         string `json:"status"`
+	Message        string `json:"message,omitempty"`
+	HttpStatusCode int    `json:"http_status_code,omitempty"`
+	HttpStatus     string `json:"http_status,omitempty"`
+	HttpRedirect   string `json:"http_redirect,omitempty"`
+}
+
+// HttpCheckError is an error
+type HttpCheckError struct {
+	URL     url.URL
+	Message string
+}
+
+// Error is the standard method to satisfy the Error interface
+func (e *HttpCheckError) Error() string {
+	return fmt.Sprintf("%s: %s", e.URL.String(), e.Message)
 }
 
 // HttpCheckEntry is a HTTP check item
@@ -58,6 +72,7 @@ type HttpCheckEntry struct {
 	WaitGroup  *sync.WaitGroup
 	Timeout    time.Duration
 	Results    chan *http.Response
+	Errors     chan error
 }
 
 // Check performs a HTTP GET request through the HttpClient
@@ -79,7 +94,7 @@ func (c *HttpCheckEntry) Check() {
 	req = req.WithContext(ctx)
 	res, err := c.HttpClient.Do(req)
 	if err != nil {
-		log.Warnln(err)
+		c.Errors <- &HttpCheckError{URL: c.URL, Message: err.Error()}
 		return
 	}
 
@@ -101,6 +116,7 @@ func (c *HttpCheckEntry) Check() {
 			WaitGroup:  c.WaitGroup,
 			Timeout:    c.Timeout,
 			Results:    c.Results,
+			Errors:     c.Errors,
 		}
 		go cc.Check()
 	}
@@ -108,7 +124,6 @@ func (c *HttpCheckEntry) Check() {
 
 // getStdinURLs reads stdin and returns a slice of strings
 func getStdinURLs() ([]string, error) {
-
 	urls := make([]string, 0)
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -134,6 +149,7 @@ func cmdMain(cmd *cobra.Command, args []string) {
 	// Gather URLs to check from argument list or stdin
 	var rawURLs []string = args
 	if len(rawURLs) == 0 {
+		log.Debugln("Found not URL arguments")
 		rawURLs, _ = getStdinURLs()
 		if err != nil {
 			log.Fatalln("Need a least one URL to check")
@@ -162,6 +178,7 @@ func cmdMain(cmd *cobra.Command, args []string) {
 
 	// Create channel to receive check results
 	results := make(chan *http.Response)
+	errors := make(chan error)
 	done := make(chan bool)
 
 	// Establish waitgroup size
@@ -169,13 +186,14 @@ func cmdMain(cmd *cobra.Command, args []string) {
 
 	// Initiate asynchronous HTTP checks
 	for _, u := range validURLs {
-		log.Debugln("Firing URL check")
+		log.Debugf("Firing URL check for %s", u.String())
 		c := HttpCheckEntry{
 			HttpClient: client,
 			URL:        u,
 			WaitGroup:  &wg,
 			Timeout:    3 * time.Second,
 			Results:    results,
+			Errors:     errors,
 		}
 		go c.Check()
 	}
@@ -190,21 +208,43 @@ func cmdMain(cmd *cobra.Command, args []string) {
 resultloop: // Handle asynchronous HTTP check results as they are returned
 	for {
 		select {
-		case res := <-results:
-			log.Infof("Request: %s, Status: %s, Redirect: %s",
-				res.Request.URL.String(),
-				res.Status,
-				res.Header.Get("Location"))
-			j, err := json.Marshal(HttpCheckResults{
-				Request:  res.Request.URL.String(),
-				Status:   res.Status,
-				Redirect: res.Header.Get("Location"),
+
+		case r := <-results:
+			log.Infof("Request: %s, Status Code: %d, Status: %s, Redirect: %s",
+				r.Request.URL.String(),
+				r.StatusCode,
+				r.Status,
+				r.Header.Get("Location"))
+
+			j, err := json.Marshal(HttpCheckResultsDisplay{
+				HttpRequest:    r.Request.URL.String(),
+				Status:         "Successful",
+				HttpStatusCode: r.StatusCode,
+				HttpStatus:     r.Status,
+				HttpRedirect:   r.Header.Get("Location"),
 			})
 			if err != nil {
 				log.Fatalln(err)
 			}
 			// Output JSON to stdout
 			fmt.Println(string(j))
+
+		case r := <-errors:
+			if r, ok := r.(*HttpCheckError); ok {
+				log.Warnf("Request: %s, Error: %s",
+					r.URL.String(),
+					r.Message)
+				j, err := json.Marshal(HttpCheckResultsDisplay{
+					HttpRequest: r.URL.String(),
+					Status:      "Failed",
+					Message:     r.Message,
+				})
+				if err != nil {
+					log.Fatalln(err)
+				}
+				fmt.Println(string(j))
+			}
+
 		case <-done:
 			break resultloop
 		}
