@@ -218,7 +218,7 @@ resultloop: // Handle asynchronous HTTP check results as they are returned
 
 			j, err := json.Marshal(HttpCheckResultsDisplay{
 				HttpRequest:    r.Request.URL.String(),
-				Status:         "Successful",
+				Status:         "Complete",
 				HttpStatusCode: r.StatusCode,
 				HttpStatus:     r.Status,
 				HttpRedirect:   r.Header.Get("Location"),
@@ -236,7 +236,7 @@ resultloop: // Handle asynchronous HTTP check results as they are returned
 					r.Message)
 				j, err := json.Marshal(HttpCheckResultsDisplay{
 					HttpRequest: r.URL.String(),
-					Status:      "Failed",
+					Status:      "Error",
 					Message:     r.Message,
 				})
 				if err != nil {
