@@ -83,7 +83,7 @@ Get version
 
 Building `proxytest` requires having Go installed and follows the typical Go build process.  You can download Go [here](https://golang.org/dl/).
 
-Visit the [releases](https://github.com/mdasilva/proxytest/release) section if you are looking for available pre-compiled binaries.
+Visit the [releases](https://github.com/mdasilva/proxytest/releases) section if you are looking for available pre-compiled binaries.
 
 ---
 
