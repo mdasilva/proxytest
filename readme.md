@@ -7,8 +7,8 @@ Features
 - Multiple OS & architectures supported
 - HTTP_PROXY environment variable support
 - Concurrent HTTP checks
-- Short timeouts
 - Redirect support
+- Short timeouts
 - Stdin support
 - JSON output
 
@@ -77,9 +77,12 @@ Get version
 
 # Building
 
+Building `proxytest` requires having Go installed and follows the typical Go build process.  You can download Go [here](https://golang.org/dl/).
+
 Checkout code into your GOPATH
 
     $ git clone git@github.com:mdasilva/proxytest.git $GOPATH/src/github.com/mdasilva/proxytest
+
 
 Fetch dependencies
 
